@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Back in stock alerts</title>
+    <style>
+      :root {
+        --bg: #f6f1ea;
+        --card: #fffdf9;
+        --ink: #1f1a16;
+        --muted: #6b6158;
+        --line: #e6d9cc;
+        --accent: #1f6b4a;
+        --accent-hover: #18563b;
+        --danger: #9b2c2c;
+        --success: #1f6b4a;
+        --focus: #2f9e6a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+      }
+
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        background: radial-gradient(circle at top left, #fff8f0, var(--bg));
+        color: var(--ink);
+        padding: 1rem;
+      }
+
+      .widget {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 1.25rem;
+        box-shadow: 0 10px 30px rgba(61, 42, 24, 0.08);
+      }
+
+      .eyebrow {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 0.4rem;
+      }
+
+      h1 {
+        font-size: clamp(1.35rem, 3vw, 1.7rem);
+        line-height: 1.2;
+        margin: 0 0 0.4rem;
+      }
+
+      .lede {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 0.95rem;
+        color: var(--muted);
+        margin: 0 0 1.1rem;
+      }
+
+      form {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      label {
+        font-family: Arial, Helvetica, sans-serif;
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+
+      input {
+        width: 100%;
+        font: inherit;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: 400;
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0.75rem 0.85rem;
+      }
+
+      input:focus {
+        outline: 2px solid var(--focus);
+        outline-offset: 1px;
+        border-color: var(--focus);
+      }
+
+      input[aria-invalid="true"] {
+        border-color: var(--danger);
+      }
+
+      .hint {
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      button {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #fff;
+        background: var(--accent);
+        border: 0;
+        border-radius: 999px;
+        padding: 0.85rem 1rem;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      .status {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 0.9rem;
+        min-height: 1.2em;
+        margin: 0;
+      }
+
+      .status.success {
+        color: var(--success);
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="widget" aria-labelledby="embed-title">
+      <p class="eyebrow">Back in stock</p>
+      <h1 id="embed-title">Get notified when it's available</h1>
+      <p class="lede">Leave your email and we'll send one alert when this product is restocked.</p>
+
+      <form id="back-in-stock-form" novalidate>
+        <label for="email">
+          Email address
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            inputmode="email"
+            required
+            aria-describedby="email-hint status-message"
+          />
+          <span id="email-hint" class="hint">We'll only use this to send the restock alert.</span>
+        </label>
+
+        <label for="sku">
+          Product SKU
+          <input
+            id="sku"
+            name="sku"
+            type="text"
+            autocomplete="off"
+            required
+            aria-describedby="sku-hint status-message"
+          />
+          <span id="sku-hint" class="hint">The product code from the item page.</span>
+        </label>
+
+        <button type="submit" id="submit-button">Notify me</button>
+        <p id="status-message" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <script>
+      const form = document.getElementById("back-in-stock-form");
+      const emailInput = document.getElementById("email");
+      const skuInput = document.getElementById("sku");
+      const submitButton = document.getElementById("submit-button");
+      const statusMessage = document.getElementById("status-message");
+      let requestInProgress = false;
+
+      function setStatus(message, type) {
+        statusMessage.textContent = message;
+        statusMessage.className = "status " + type;
+      }
+
+      function setFieldValidity(input, isValid) {
+        input.setAttribute("aria-invalid", isValid ? "false" : "true");
+      }
+
+      function readErrorMessage(data, status) {
+        if (status === 409) {
+          if (typeof data?.detail === "string" && data.detail) {
+            return data.detail;
+          }
+          return "You're already signed up for alerts on this product.";
+        }
+
+        if (Array.isArray(data?.detail)) {
+          return data.detail
+            .map(function (item) {
+              return item.msg || "Please check your details.";
+            })
+            .join(" ");
+        }
+
+        if (typeof data?.detail === "string" && data.detail) {
+          return data.detail;
+        }
+
+        return "We couldn't save your request. Please try again.";
+      }
+
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        if (requestInProgress) {
+          return;
+        }
+
+        const email = emailInput.value.trim();
+        const sku = skuInput.value.trim();
+        let isValid = true;
+
+        if (!email || emailInput.validity.typeMismatch) {
+          setFieldValidity(emailInput, false);
+          isValid = false;
+        } else {
+          setFieldValidity(emailInput, true);
+        }
+
+        if (!sku) {
+          setFieldValidity(skuInput, false);
+          isValid = false;
+        } else {
+          setFieldValidity(skuInput, true);
+        }
+
+        if (!isValid) {
+          setStatus("Please enter a valid email and product SKU.", "error");
+          return;
+        }
+
+        requestInProgress = true;
+        submitButton.disabled = true;
+        submitButton.textContent = "Sending...";
+        setStatus("Saving your request...", "");
+
+        try {
+          const response = await fetch("/api/requests", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ email: email, sku: sku }),
+          });
+
+          const data = await response.json().catch(function () {
+            return null;
+          });
+
+          if (response.status === 201) {
+            setStatus("You're on the list. We'll email you when this item is back in stock.", "success");
+            return;
+          }
+
+          setStatus(readErrorMessage(data, response.status), "error");
+        } catch (error) {
+          setStatus("We couldn't reach the server. Check your connection and try again.", "error");
+        } finally {
+          requestInProgress = false;
+          submitButton.disabled = false;
+          submitButton.textContent = "Notify me";
+        }
+      });
+    </script>
+  </body>
+</html>

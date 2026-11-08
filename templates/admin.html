@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Back in Stock - Admin</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 32px 20px;
+            background: #f5f6f8;
+            color: #222;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 28px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e5e5;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        th {
+            background: #fafafa;
+            color: #555;
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background: #eee;
+            font-size: 12px;
+            text-transform: capitalize;
+        }
+
+        .status.notified {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .empty {
+            padding: 40px;
+            text-align: center;
+            color: #777;
+        }
+
+        .count {
+            margin-bottom: 12px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <h1>Back in Stock</h1>
+        <p class="subtitle">Subscription administration</p>
+
+        <p class="count">
+            Total subscriptions: {{ subscribers|length }}
+        </p>
+
+        <div class="table-wrapper">
+            {% if subscribers %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>SKU</th>
+                        <th>Status</th>
+                        <th>Subscribed</th>
+                        <th>Notified</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subscriber in subscribers %}
+                    <tr>
+                        <td>{{ subscriber.email }}</td>
+                        <td>{{ subscriber.sku }}</td>
+                        <td>
+                            <span class="status {{ subscriber.status }}">
+                                {{ subscriber.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ subscriber.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
+                        </td>
+                        <td>
+                            {% if subscriber.notified_at %}
+                                {{ subscriber.notified_at.strftime('%Y-%m-%d %H:%M UTC') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">
+                No subscriptions yet.
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>
